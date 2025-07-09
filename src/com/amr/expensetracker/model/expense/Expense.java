@@ -7,7 +7,7 @@ public class Expense {
     private double amount;
     private String description;
 
-    // Constructor without ID for insert
+    
     public Expense(String date, String category, double amount, String description) {
         this.date = date;
         this.category = category;
@@ -15,7 +15,7 @@ public class Expense {
         this.description = description;
     }
 
-    // Constructor with ID for retrieval
+   
     public Expense(int id, String date, String category, double amount, String description) {
         this.id = id;
         this.date = date;
@@ -24,7 +24,7 @@ public class Expense {
         this.description = description;
     }
 
-    // Getters
+    
     public int getId() { return id; }
     public String getDate() { return date; }
     public String getCategory() { return category; }
@@ -32,7 +32,7 @@ public class Expense {
     public String getDescription() { return description; }
 
     
-    //Setters
+    
 	public void setId(int id) {
 		this.id = id;
 	}

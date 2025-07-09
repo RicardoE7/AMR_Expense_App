@@ -1,0 +1,9 @@
+id,date,category,amount,description
+1,1/15/2025,Food,12.99,Lunch sandwich
+2,1/15/2025,Transportation,25.5,Gas station
+3,1/16/2025,Entertainment,15,Movie ticket
+4,1/16/2025,Food,8.75,Coffee and pastry
+5,1/17/2025,Shopping,45.99,Groceries
+6,1/17/2025,Transportation,12,Uber ride
+7,1/18/2025,Food,22.5,Dinner at restaurant
+8,1/18/2025,Entertainment,30,Concert tickets

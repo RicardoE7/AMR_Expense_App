@@ -1,10 +1,13 @@
 package com.amr.expensetracker.dao;
 
+import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.amr.expensetracker.model.expense.Expense;
 import com.amr.expensetracker.util.DBUtil.DBUtil;
@@ -30,6 +33,30 @@ public class ExpenseDAO {
         }
     }
 	
+	public List<Expense> getAllExpenses() {
+	    String sql = "SELECT * FROM Expenses ORDER BY date DESC";
+	    List<Expense> expenses = new ArrayList<>();
+
+	    try (Connection conn = DBUtil.getConnection();
+	         Statement stmt = conn.createStatement();
+	         ResultSet rs = stmt.executeQuery(sql)) {
+
+	        while (rs.next()) {
+	            Expense expense = new Expense(
+	                rs.getString("date"),
+	                rs.getString("category"),
+	                rs.getDouble("amount"),
+	                rs.getString("description")
+	            );
+	            expenses.add(expense);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    
+	    return expenses;
+	}
+	
 	public void getTotalExpensesByCategory() {
 	    String sql = "SELECT category, SUM(amount) AS total FROM Expenses GROUP BY category";
 
@@ -44,6 +71,33 @@ public class ExpenseDAO {
 	            System.out.println(category + ": $" + total);
 	        }
 	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	public void exportToCSV(String filePath) {
+	    String sql = "SELECT * FROM Expenses";
+
+	    try (Connection conn = DBUtil.getConnection();
+	         Statement stmt = conn.createStatement();
+	         ResultSet rs = stmt.executeQuery(sql);
+	         FileWriter csvWriter = new FileWriter(filePath)) {
+
+	        // Write CSV header
+	        csvWriter.append("id,date,category,amount,description\n");
+
+	        // Write data rows
+	        while (rs.next()) {
+	            csvWriter.append(rs.getInt("id") + ",")
+	                     .append(rs.getString("date") + ",")
+	                     .append(rs.getString("category") + ",")
+	                     .append(rs.getDouble("amount") + ",")
+	                     .append(rs.getString("description") + "\n");
+	        }
+
+	        System.out.println("Data exported to CSV successfully!");
+
+	    } catch (Exception e) {
 	        e.printStackTrace();
 	    }
 	}
