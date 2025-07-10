@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMR Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logo-img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #2d3e6e;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(44, 62, 110, 0.15);
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .success-message {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .error-message {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .expenses-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .expense-item:last-child {
+            border-bottom: none;
+        }
+        .expense-info {
+            flex: 1;
+        }
+        .expense-amount {
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .expense-category {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .actions {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #28a745;
+        }
+        
+        .toast.error {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <div class="logo-container">
+            <img src="/actuarial_management_resources_logo.jpg" alt="AMR Logo" class="logo-img">
+        </div>
+        <h1>AMR Expense Tracker</h1>
+        <div class="loading" id="loading">Loading expense data...</div>
+        <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+        </div>
+        <div class="summary" id="summary"></div>
+        <div class="actions">
+            <button onclick="downloadCSV()" class="btn-secondary">Download CSV</button>
+            <button onclick="copyMacro()" class="btn-secondary">Copy Macro</button>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <h2>Add New Expense</h2>
+        <form id="expenseForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category:</label>
+                    <select id="category" name="category" required>
+                        <option value="">Select Category</option>
+                        <option value="Food">Food</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount ($):</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" placeholder="Enter expense description..." required></textarea>
+            </div>
+            <button type="submit">Add Expense</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <div class="expenses-list">
+        <h2>Recent Expenses</h2>
+        <div id="expensesList"></div>
+    </div>
+
+    <script>
+        console.log('Script loaded');
+        let chart;
+        let expenses = [];
+        const API_URL = '/api/expenses';
+
+        // Group expenses by category for chart
+        function groupByCategory(expenses) {
+            console.log('Grouping expenses by category:', expenses);
+            const grouped = {};
+            expenses.forEach(expense => {
+                const category = expense.category || 'Other';
+                const amount = parseFloat(expense.amount);
+                if (!isNaN(amount)) {
+                    grouped[category] = (grouped[category] || 0) + amount;
+                }
+            });
+            console.log('Grouped data:', grouped);
+            return grouped;
+        }
+
+        // Create pie chart using Chart.js
+        function createChart(data) {
+            console.log('Creating chart with data:', data);
+            const categories = Object.keys(data);
+            const amounts = Object.values(data);
+            
+            // Chart colors
+            const colors = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+            ];
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: colors.slice(0, categories.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: $${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('Chart created successfully');
+        }
+
+        // Display expense summary
+        function displaySummary(data) {
+            console.log('Displaying summary with data:', data);
+            const total = Object.values(data).reduce((sum, amount) => sum + amount, 0);
+            const summaryDiv = document.getElementById('summary');
+            
+            let summaryHTML = '<h3>Expense Summary</h3>';
+            summaryHTML += `<p><strong>Total Expenses:</strong> $${total.toFixed(2)}</p>`;
+            summaryHTML += '<h4>By Category:</h4><ul>';
+            
+            Object.entries(data).forEach(([category, amount]) => {
+                const percentage = ((amount / total) * 100).toFixed(1);
+                summaryHTML += `<li><strong>${category}:</strong> $${amount.toFixed(2)} (${percentage}%)</li>`;
+            });
+            
+            summaryHTML += '</ul>';
+            summaryDiv.innerHTML = summaryHTML;
+            console.log('Summary displayed');
+        }
+
+        // Display expenses list
+        function displayExpensesList() {
+            console.log('Displaying expenses list:', expenses);
+            const listDiv = document.getElementById('expensesList');
+            
+            if (expenses.length === 0) {
+                listDiv.innerHTML = '<p>No expenses found.</p>';
+                return;
+            }
+            
+            let html = '';
+            // Take the first 10 expenses (newest first, since API returns descending order)
+            expenses.slice(0, 10).forEach(expense => {
+                html += `
+                    <div class="expense-item">
+                        <div class="expense-info">
+                            <strong>${expense.date}</strong> - ${expense.description}
+                            <span class="expense-category">${expense.category || 'Other'}</span>
+                        </div>
+                        <div class="expense-amount">$${parseFloat(expense.amount).toFixed(2)}</div>
+                    </div>
+                `;
+            });
+            
+            listDiv.innerHTML = html;
+            console.log('Expenses list displayed');
+        }
+
+        // Download CSV function
+        async function downloadCSV() {
+            try {
+                // Create CSV content from expenses data
+                let csvContent = 'Date,Category,Amount,Description\n';
+                let validExpenseCount = 0;
+                
+                expenses.forEach(expense => {
+                    // Skip expenses with null/empty values
+                    if (!expense.date || !expense.category || !expense.amount || 
+                        !expense.description || expense.description.trim() === '') {
+                        console.log('Skipping problematic expense:', expense);
+                        return;
+                    }
+                    
+                    // Escape commas and quotes in description to prevent CSV parsing issues
+                    const escapedDescription = expense.description.replace(/"/g, '""');
+                    csvContent += `${expense.date},${expense.category},${expense.amount},"${escapedDescription}"\n`;
+                    validExpenseCount++;
+                });
+                
+                // Remove the trailing newline to avoid blank row
+                csvContent = csvContent.trim();
+                
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'expenses.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                showMessage(`CSV downloaded successfully! (${validExpenseCount} valid expenses)`, 'success');
+            } catch (error) {
+                console.error('Error downloading CSV:', error);
+                showMessage('Error downloading CSV file.', 'error');
+            }
+        }
+
+        // Copy Macro function
+        function copyMacro() {
+            const macro = `Sub ImportExpensesAndCreateChart()
+    Dim ws As Worksheet, summaryWs As Worksheet
+    Dim filePath As Variant
+    Dim lastRow As Long, i As Long, sumRow As Long
+    Dim chartObj As ChartObject
+    Dim catDict As Object
+    Dim cat As Variant, amt As Variant
+    Dim cellValue As Variant
+
+    ' Prompt user to select the CSV file
+    filePath = Application.GetOpenFilename("CSV Files (*.csv), *.csv", , "Select Expenses CSV")
+    If filePath = "False" Then Exit Sub
+
+    ' Add a new worksheet for the data
+    Set ws = Worksheets.Add
+    ws.Name = "ImportedExpenses"
+
+    ' Import the CSV data
+    With ws.QueryTables.Add(Connection:="TEXT;" & filePath, Destination:=ws.Range("A1"))
+        .TextFileParseType = xlDelimited
+        .TextFileCommaDelimiter = True
+        .TextFilePlatform = xlWindows
+        .Refresh BackgroundQuery:=False
+    End With
+
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Create a dictionary to sum amounts by category
+    Set catDict = CreateObject("Scripting.Dictionary")
+    For i = 2 To lastRow
+        ' Skip empty rows
+        If Len(Trim(ws.Cells(i, 1).Value)) > 0 Then
+            cat = Trim(ws.Cells(i, 2).Value) ' Column B = category
+            cellValue = ws.Cells(i, 3).Value ' Column C = amount
+            
+            ' Handle different data types for amount
+            If IsNumeric(cellValue) Then
+                amt = CDbl(cellValue)
+            Else
+                ' Try to convert string to number
+                amt = CDbl(Replace(cellValue, "$", ""))
+            End If
+            
+            If catDict.Exists(cat) Then
+                catDict(cat) = catDict(cat) + amt
+            Else
+                catDict.Add cat, amt
+            End If
+        End If
+    Next i
+
+    ' Output the summary to a new sheet
+    Set summaryWs = Worksheets.Add
+    summaryWs.Name = "CategorySummary"
+    summaryWs.Range("A1").Value = "Category"
+    summaryWs.Range("B1").Value = "Amount"
+    sumRow = 2
+    For Each cat In catDict.Keys
+        summaryWs.Cells(sumRow, 1).Value = cat
+        summaryWs.Cells(sumRow, 2).Value = catDict(cat)
+        sumRow = sumRow + 1
+    Next cat
+
+    ' Create a Pie Chart for the summarized data
+    Set chartObj = summaryWs.ChartObjects.Add(Left:=300, Width:=400, Top:=10, Height:=300)
+    With chartObj.Chart
+        .ChartType = xlPie
+        .SetSourceData Source:=summaryWs.Range("A1:B" & sumRow - 1)
+        .HasTitle = True
+        .ChartTitle.Text = "Expenses by Category"
+        .ApplyDataLabels
+    End With
+
+    MsgBox "Import and chart complete!", vbInformation
+End Sub`;
+
+            try {
+                navigator.clipboard.writeText(macro).then(() => {
+                    showToast('✅ Macro copied to clipboard!', 'success');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = macro;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('✅ Macro copied to clipboard!', 'success');
+                });
+            } catch (error) {
+                console.error('Error copying macro:', error);
+                showToast('❌ Error copying macro to clipboard.', 'error');
+            }
+        }
+
+        // Add expense to backend and update UI
+        async function addExpense(expenseData) {
+            try {
+                console.log('Adding expense:', expenseData);
+                // Send to Spring Boot API
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        description: expenseData.description,
+                        amount: parseFloat(expenseData.amount),
+                        date: expenseData.date,
+                        category: expenseData.category
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add expense');
+                }
+
+                console.log('Expense added successfully, reloading data...');
+                
+                // Reload expenses from API
+                await loadExpenseData();
+                
+                console.log('Data reloaded, showing success message');
+                showMessage('Expense added successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error adding expense:', error);
+                showMessage('Error adding expense.', 'error');
+            }
+        }
+
+        // Show success/error messages
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.toast');
+            existingToasts.forEach(toast => toast.remove());
+            
+            // Create new toast
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Load expense data from Spring Boot API
+        async function loadExpenseData() {
+            try {
+                console.log('Loading expense data from:', API_URL);
+                const response = await fetch(API_URL);
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load expenses: ${response.status}`);
+                }
+                
+                expenses = await response.json();
+                console.log('Loaded expenses:', expenses);
+                console.log('Number of expenses loaded:', expenses.length);
+                
+                // Add category field if not present (for backward compatibility)
+                expenses.forEach(expense => {
+                    if (!expense.category) {
+                        expense.category = 'Other';
+                    }
+                });
+                
+                const groupedData = groupByCategory(expenses);
+                
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+                
+                // Update UI
+                createChart(groupedData);
+                displaySummary(groupedData);
+                displayExpensesList();
+                
+                console.log('UI updated successfully');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = 
+                    `Error loading expense data: ${error.message}. Please make sure the Spring Boot server is running.`;
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const expenseData = {
+                date: formData.get('date'),
+                category: formData.get('category'),
+                amount: formData.get('amount'),
+                description: formData.get('description')
+            };
+            
+            // Validation
+            if (!expenseData.date || !expenseData.category || !expenseData.amount || !expenseData.description) {
+                showMessage('Please fill in all fields.', 'error');
+                return;
+            }
+            
+            if (parseFloat(expenseData.amount) <= 0) {
+                showMessage('Amount must be greater than 0.', 'error');
+                return;
+            }
+            
+            // Add expense
+            addExpense(expenseData);
+            
+            // Reset form
+            e.target.reset();
+            document.getElementById('date').valueAsDate = new Date();
+        });
+
+        // Set today's date as default
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Load data when page loads
+        console.log('Page loaded, calling loadExpenseData');
+        window.addEventListener('load', loadExpenseData);
+    </script>
+</body>
+</html> 
